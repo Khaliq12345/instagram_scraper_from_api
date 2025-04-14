@@ -9,21 +9,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def charger_fichier_excel(nom_fichier):
-    chemin_fichier = os.path.join(os.getcwd(), nom_fichier)
-    try:
-        df = pd.read_excel(chemin_fichier)
-        return df
-    except FileNotFoundError:
-        print(
-            f"Erreur: Le fichier '{nom_fichier}' n'a pas été trouvé dans le répertoire courant."
-        )
-        return None
-    except Exception as e:
-        print(f"Une erreur s'est produite lors du chargement du fichier: {e}")
-        return None
-
-
 def ecrire_ligne_resultat(file_name: str, df: pd.DataFrame):
     if os.path.exists(file_name):
         df.to_csv(file_name, mode="a", header=False, index=False)
@@ -68,7 +53,7 @@ def get_gender(username):
 
 def process_input_dataframe(df_source: pd.DataFrame):
     already_got = 0
-    total_results = 5
+    total_results = 1000
     file_name = f"{str(int(datetime.now().timestamp()))}.csv"
     if df_source.empty:
         return None
