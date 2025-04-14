@@ -15,11 +15,14 @@ class InstaApp:
     def __init__(self):
         self.input_df = None
         self.password = None
+        self.total_results = 10
 
     async def start_bot(self):
         with ui.element("div").classes("w-full"):
             spinner = ui.spinner(size="lg").classes("w-full")
-        file_name = await run.cpu_bound(process_input_dataframe, self.input_df)
+        file_name = await run.cpu_bound(
+            process_input_dataframe, self.input_df, self.total_results
+        )
         spinner.visible = False
 
         output_df = pd.read_csv(file_name)
@@ -63,6 +66,7 @@ class InstaApp:
             ui.upload(on_upload=self.handle_upload, auto_upload=True).props(
                 "accept=.csv flat"
             ).classes("w-full")
+            ui.number(label="Total to scrape").bind_value(self, "total_results")
             ui.button("Start Extracting").classes("full-width m-5").on_click(
                 self.start_bot
             )

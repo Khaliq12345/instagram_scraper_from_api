@@ -19,13 +19,13 @@ def ecrire_ligne_resultat(file_name: str, df: pd.DataFrame):
 def get_followers(username, start_from):
     rapidapi_key = os.getenv("rapidapi_key")
     try:
-        url = "https://social-api4.p.rapidapi.com/v1/followers"
+        url = "https://instagram-social-api.p.rapidapi.com/v1/followers"
         querystring = {"username_or_id_or_url": username}
         if start_from:
             querystring["pagination_token"] = start_from
         headers = {
             "x-rapidapi-key": rapidapi_key,
-            "x-rapidapi-host": "social-api4.p.rapidapi.com",
+            "x-rapidapi-host": "instagram-social-api.p.rapidapi.com",
         }
         response = requests.get(url, headers=headers, params=querystring)
         json_data = response.json()
@@ -51,9 +51,9 @@ def get_gender(username):
         return None
 
 
-def process_input_dataframe(df_source: pd.DataFrame):
+def process_input_dataframe(df_source: pd.DataFrame, total_results: int):
     already_got = 0
-    total_results = 1000
+    # total_results = 1000
     file_name = f"{str(int(datetime.now().timestamp()))}.csv"
     if df_source.empty:
         return None
