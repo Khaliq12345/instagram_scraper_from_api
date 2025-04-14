@@ -17,7 +17,6 @@ class InstaApp:
         self.password = None
 
     async def start_bot(self):
-        ui.notify("Starting the bot")
         with ui.element("div").classes("w-full"):
             spinner = ui.spinner(size="lg").classes("w-full")
         file_name = await run.cpu_bound(process_input_dataframe, self.input_df)
@@ -37,7 +36,6 @@ class InstaApp:
     def handle_upload(self, e: events.UploadEventArguments):
         byte_content = e.content.read()
         self.input_df = pd.read_csv(BytesIO(byte_content))
-        ui.notify(f"We have {len(self.input_df)} Instagram profiles in the csv file")
 
     def handle_login(self):
         if self.password == os.getenv("api_key"):
@@ -75,11 +73,14 @@ def start_app():
     ui.colors(primary="black")
     insta_app = InstaApp()
     api_key = app.storage.user.get("api_key")
-    diff = abs(parse(api_key["exp"]) - parse("now"))
-    if (not api_key) or (api_key["value"] != os.getenv("api_key")) or (diff.days > 0):
-        insta_app.login()
+    if api_key:
+        diff = abs(parse(api_key["exp"]) - parse("now"))
+        if (api_key["value"] != os.getenv("api_key")) or (diff.days > 0):
+            insta_app.login()
+        else:
+            insta_app.main()
     else:
-        insta_app.main()
+        insta_app.login()
 
 
 ui.run(host="0.0.0.0", storage_secret=os.getenv("secret_key"))
