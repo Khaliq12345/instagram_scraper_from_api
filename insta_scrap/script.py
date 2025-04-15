@@ -73,6 +73,7 @@ def get_posts_count(username):
 def sub_process_user(user, index, file_name):
     try:
         post_count = get_posts_count(user["username"])
+        print(f"User --> {user["username"]} | Posts Count --> {post_count}")
         if post_count < 5:
             return 0
 
@@ -118,7 +119,7 @@ def process_input_dataframe(df_source: pd.DataFrame, total_results: int):
             if not followers_res:
                 break
             print(f"Total users: {len(followers_res)}, already got: {already_got}")
-            with ThreadPoolExecutor(max_workers=5) as executor:
+            with ThreadPoolExecutor(max_workers=10) as executor:
                 futures = []
                 for user in followers_res:
                     futures.append(executor.submit(sub_process_user, user, index, file_name))
