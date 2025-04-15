@@ -1,0 +1,7 @@
+.qodo
+.env
+insta-scrap.zip
+__pycache__
+.venv
+*.xlsx
+.nicegui
