@@ -1,7 +1,8 @@
 import json
 import os
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+
 import pandas as pd
 import requests
 from dotenv import load_dotenv
@@ -70,7 +71,7 @@ def get_posts_count(username):
         return None
 
 
-def sub_process_user(user, index, file_name):
+def sub_process_user(user, index, file_name) -> int:
     try:
         post_count = get_posts_count(user["username"])
         print(f"User --> {user["username"]} | Posts Count --> {post_count}")
@@ -81,11 +82,7 @@ def sub_process_user(user, index, file_name):
             return 0
 
         gender_res = get_gender(user["full_name"])
-        if (
-            gender_res
-            and ("gender" in gender_res)
-            and ("country" in gender_res)
-        ):
+        if gender_res and ("gender" in gender_res) and ("country" in gender_res):
             if (gender_res["gender"] == "male") and (gender_res["country"] == "US"):
                 result = {
                     "username": user["username"],
@@ -122,11 +119,13 @@ def process_input_dataframe(df_source: pd.DataFrame, total_results: int):
             with ThreadPoolExecutor(max_workers=10) as executor:
                 futures = []
                 for user in followers_res:
-                    futures.append(executor.submit(sub_process_user, user, index, file_name))
+                    futures.append(
+                        executor.submit(sub_process_user, user, index, file_name)
+                    )
 
                 for future in as_completed(futures):
                     already_got += future.result()
-            
+
     print("DONE!")
     return file_name
 
