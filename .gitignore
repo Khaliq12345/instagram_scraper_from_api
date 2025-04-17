@@ -5,3 +5,7 @@ __pycache__
 .venv
 *.xlsx
 .nicegui
+
+env/
+packages.txt
+images/
