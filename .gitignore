@@ -9,3 +9,4 @@ __pycache__
 env/
 packages.txt
 images/
+insta_scrap/base_code.py

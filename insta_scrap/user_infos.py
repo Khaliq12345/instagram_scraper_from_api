@@ -1,75 +1,53 @@
 from dotenv import load_dotenv
 from datetime import datetime
+import dateparser
 import hashlib
 import json
 import os
 import requests
 import time
+from the_retry import retry
 
+# Charger les variables d'environnement depuis un fichier .env
 load_dotenv()
 
 
-def check_uri(url, querystring, headers, max_retries=3, timeout=30) -> dict | None:
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(
-                url=url, headers=headers, params=querystring, timeout=timeout
-            )
-            response.raise_for_status()
-            data = response.json()
-            # json.dumps(data, indent=2)
-            return data.get("data", None)
-        except requests.exceptions.RequestException as e:
-            print(f"[Tentative {attempt + 1}] Échec : {e}")
-            if attempt < max_retries - 1:
-                print("Nouvelle tentative...\n")
-    print("❌ Échec après plusieurs tentatives.")
-    return None
+# Décorateur pour gérer les tentatives multiples avec un délai croissant en cas d'échec
+@retry(attempts=5, backoff=5, exponential_backoff=True, maximum_backoff=60)
+# Fonction pour effectuer une requête HTTP GET avec gestion des erreurs.
+def check_uri(url, querystring, headers, timeout=30):
+    try:
+        response = requests.get(
+            url=url, headers=headers, params=querystring, timeout=timeout
+        )
+        response.raise_for_status()
+        return response.json().get("data", None)
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Échec lors de l'appel API : {e}")
+        return None
 
 
+# Vérifie si la valeur est supérieure ou égale à la valeur minimale.
 def is_at_least(value, minimum) -> bool:
     return value >= minimum
 
 
+# Vérifie si la valeur est inférieure ou égale à la valeur maximale.
 def is_at_most(value, maximum) -> bool:
     return value <= maximum
 
 
+# Vérifie si la valeur est comprise entre les bornes inférieure et supérieure.
 def is_between(value, lower, upper) -> bool:
     return lower <= value <= upper
 
 
+# Vérifie si les deux valeurs sont égales.
 def is_equal(value1, value2) -> bool:
     return value1 == value2
 
 
-def parse_french_date(date_str: str) -> datetime:
-    mois_fr_en = {
-        "janvier": "January",
-        "février": "February",
-        "mars": "March",
-        "avril": "April",
-        "mai": "May",
-        "juin": "June",
-        "juillet": "July",
-        "août": "August",
-        "septembre": "September",
-        "octobre": "October",
-        "novembre": "November",
-        "décembre": "December",
-    }
-
-    date_str = date_str.lower()
-    mois, annee = date_str.split()
-    mois_en = mois_fr_en.get(mois)
-
-    if not mois_en:
-        raise ValueError(f"Mois inconnu: '{mois}'")
-
-    date_en = f"{mois_en} {annee}"
-    return datetime.strptime(date_en, "%B %Y")
-
-
+# Récupère l'image à partir de son URL et renvoie son contenu sous forme de bytes.
 def get_image_bytes(image_url) -> bytes | None:
     image_bytes = None
     try:
@@ -81,31 +59,16 @@ def get_image_bytes(image_url) -> bytes | None:
         print(f"Erreur lors du téléchargement de l'image : {e}")
 
 
-def generate_unique_filename(image_url: str) -> str:
-    base = f"{image_url}_{int(time.time())}"
-    hash_digest = hashlib.md5(base.encode()).hexdigest()
-    return f"{hash_digest}.jpg"
+"""
+    Récupère les informations publiques d'un utilisateur Instagram via une API externe.
 
+    Arguments:
+    - username: nom d'utilisateur Instagram
 
-def download_image(
-    username: str,
-    image_url: str,
-    save_dir: str = "images",
-    filename: str = "profile.jpg",
-):
-    os.makedirs(save_dir, exist_ok=True)
-    try:
-        response = requests.get(image_url)
-        response.raise_for_status()
-        filename = generate_unique_filename(image_url)
-        filepath = os.path.join(save_dir, filename)
-        with open(filepath, "wb") as f:
-            f.write(response.content)
-        print(f"✅ Image téléchargée avec succès : {filepath}")
-        return filepath
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Échec du téléchargement : {e}")
-        return None
+    Retour:
+    - Un dictionnaire contenant les informations de l'utilisateur et les bytes de l'image de profil si les critères sont remplis,
+      sinon None si l'utilisateur ne correspond pas aux critères
+"""
 
 
 def get_user_infos(username):
@@ -122,7 +85,7 @@ def get_user_infos(username):
     data = check_uri(url, querystring, headers)
 
     if data:
-
+        # Validation des critères de l'utilisateur
         post_count = data.get("post_count", data.get("media_count"))
         if not post_count or not is_at_least(post_count, 3):
             return None
@@ -133,7 +96,7 @@ def get_user_infos(username):
         if not is_between(post_count, 50, 5000):
             return None
         date_joined = data.get("about", {}).get("date_joined")
-        formatted_date_joined = datetime.strptime(date_joined, "%B %Y")
+        formatted_date_joined = dateparser.parse(date_joined)
         today = datetime.today()
         months = (today.year - formatted_date_joined.year) * 12 + (
             today.month - formatted_date_joined.month
@@ -153,22 +116,17 @@ def get_user_infos(username):
                 "image": data.get("profile_pic_url_hd", data.get("profile_pic_url")),
                 "follower_count": data.get("follower_count", ""),
                 "following_count": data.get("following_count", ""),
-                "post_count": data.get("post_count", data.get("media_count")),
-                # "account_type": data.get("about", {}).get("account_type", ""),
-                # "date_joined": data.get("about", {}).get("date_joined")
+                "post_count": data.get("media_count"),
             },
             "image_bytes": get_image_bytes(
                 data.get("profile_pic_url_hd", data.get("profile_pic_url"))
             ),
         }
-        download_image(
-            username=data.get("username", ""),
-            image_url=data.get("profile_pic_url_hd", data.get("profile_pic_url")),
-        )
         return user
     else:
         return None
 
 
+# Appel de la fonction avec un exemple d'utilisateur
 user_infos = get_user_infos("mrbeast")
 print(user_infos)
