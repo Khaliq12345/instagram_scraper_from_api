@@ -5,3 +5,8 @@ __pycache__
 .venv
 *.xlsx
 .nicegui
+
+env/
+packages.txt
+images/
+insta_scrap/base_code.py
