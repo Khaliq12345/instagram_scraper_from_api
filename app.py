@@ -4,9 +4,11 @@ from io import BytesIO
 import pandas as pd
 from nicegui import events, ui, run, app
 
-from insta_scrap.script import process_input_dataframe
+from insta_scrap.app import process_input_dataframe
 from dotenv import load_dotenv
 from dateparser import parse
+from config import config
+from datetime import datetime
 
 load_dotenv()
 
@@ -16,14 +18,14 @@ class InstaApp:
         self.input_df = None
         self.password = None
         self.total_results = 10
+        self.file_name = f"{str(int(datetime.now().timestamp()))}.csv"
 
     async def start_bot(self):
-        with ui.element("div").classes("w-full"):
-            spinner = ui.spinner(size="lg").classes("w-full")
+        self.spinner.visible = True
         file_name = await run.cpu_bound(
-            process_input_dataframe, self.input_df, self.total_results
+            process_input_dataframe, self.input_df, self.file_name, self.total_results
         )
-        spinner.visible = False
+        self.spinner.visible = False
 
         output_df = pd.read_csv(file_name)
         buffer = BytesIO()
@@ -41,7 +43,7 @@ class InstaApp:
         self.input_df = pd.read_csv(BytesIO(byte_content))
 
     def handle_login(self):
-        if self.password == os.getenv("api_key"):
+        if self.password == config.APP_KEY:
             ui.notify("Logged IN", position="top", type="positive")
             app.storage.user["api_key"] = {
                 "value": self.password,
@@ -58,6 +60,18 @@ class InstaApp:
             ).classes("w-1/2 text-center m-5 flat").bind_value(self, "password")
             ui.button("Login").classes("flat").on_click(lambda: self.handle_login())
 
+    @ui.refreshable
+    def reload_output(self):
+        total_users = 0
+        try:
+            users_df = pd.read_csv(self.file_name)
+            total_users = len(users_df)
+        except Exception:
+            total_users = 0
+        ui.label(f"Total users extracted - {total_users}").classes(
+            "text-h5 text-blue text-center"
+        )
+
     def main(self):
         with ui.header().classes("flex justify-center"):
             ui.label("Instagram Follower scraper").classes("md:text-h4 text-h6")
@@ -70,6 +84,10 @@ class InstaApp:
             ui.button("Start Extracting").classes("full-width m-5").on_click(
                 self.start_bot
             )
+            self.spinner = ui.spinner(size="lg", type="box").classes("w-full")
+            self.spinner.visible = False
+            self.reload_output()
+            ui.timer(2, callback=lambda: self.reload_output.refresh())
 
 
 @ui.page("/")
@@ -79,7 +97,7 @@ def start_app():
     api_key = app.storage.user.get("api_key")
     if api_key:
         diff = abs(parse(api_key["exp"]) - parse("now"))
-        if (api_key["value"] != os.getenv("api_key")) or (diff.days > 0):
+        if (api_key["value"] != config.APP_KEY) or (diff.days > 0):
             insta_app.login()
         else:
             insta_app.main()
@@ -87,4 +105,4 @@ def start_app():
         insta_app.login()
 
 
-ui.run(host="0.0.0.0", storage_secret=os.getenv("secret_key"))
+ui.run(host="0.0.0.0", storage_secret=config.SECRET_KEY)

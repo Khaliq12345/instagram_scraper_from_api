@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append(".")
-
 from google.genai import types
 from google import genai
 from pydantic import BaseModel
@@ -10,6 +6,7 @@ import requests
 from dateparser import parse
 import pandas as pd
 import os
+from the_retry import retry
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -23,8 +20,10 @@ class IsMale(BaseModel):
 system_prompt = """
 You are an analytical assistant tasked with determining, 
 if an image depicts a male person based on visual cues and provided textual information (name and bio). 
-Use the bio to identify explicit gender indicators (e.g., pronouns like 'he/him', 'she/her', or direct statements like 'I am a man'). 
-If the bio is ambiguous, make a best-effort judgment based on the image, but prioritize textual evidence. 
+Use the bio to identify explicit gender indicators (e.g., pronouns like 'he/him', 'she/her', or direct statements like 'I am a man').
+If the bio is ambiguous, make a best-effort judgment based on the image, but prioritize textual evidence.
+Also if bio contains 'promo,' 'crypto,' 'bot,' 'giveaway,' 'follow for' or any spam account words return False.
+Exclude usernames with: lots of numbers, spam phrases, or foreign text also return False is something like that shows up.
 Return only 'True' if the person is male, or 'False' if not, with no additional text.
 """
 
@@ -38,7 +37,7 @@ def send_data_to_csv(file_name: str, df: pd.DataFrame):
 
 # Define user prompt
 def user_prompt(full_name: str, bio: str):
-    f"""
+    return f"""
     Analyze the provided image to determine if it depicts a male person. Use the following name and bio to inform your decision, 
     prioritizing explicit gender indicators in the bio:
 
@@ -49,7 +48,9 @@ def user_prompt(full_name: str, bio: str):
     """
 
 
+@retry(attempts=2, backoff=10)
 def generate_gender(img_bytes: bytes, full_name: str, bio: str):
+    print("Using LLM to generate gender")
     # Prepare content
     content = [
         types.Part.from_bytes(
@@ -61,19 +62,21 @@ def generate_gender(img_bytes: bytes, full_name: str, bio: str):
 
     # generate the gender
     response = client.models.generate_content(
-        model="gemini-2.0-flash-exp-image-generation",
+        model="gemini-2.0-flash",
         contents=content,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            response_schema=IsMale,
-            response_mime_type="application/json",
-        ),
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": IsMale,
+            "system_instruction": system_prompt,
+        },
     )
     if response.parsed:
         return response.parsed.is_male
 
 
+@retry(attempts=5, backoff=5)
 def get_username_last_post_date(username: str):
+    print("Getting the date of user last post date")
     # initialise the parameter and variables needed for the requests
     url = "https://instagram-social-api.p.rapidapi.com/v1/posts"
 
@@ -95,7 +98,8 @@ def get_username_last_post_date(username: str):
     return last_post_date
 
 
-def start_gender_service(user_info: dict, img_bytes: bytes, file_name: str):
+def start_gender_service(user_info: dict, img_bytes: bytes, file_name: str) -> int:
+    print("Starting Gender service")
     # get the gender
     gender = generate_gender(img_bytes, user_info["full_name"], user_info["bio"])
 
@@ -105,5 +109,8 @@ def start_gender_service(user_info: dict, img_bytes: bytes, file_name: str):
         user_info["last_post_date"] = last_post_date
 
         # send data to file
+        print("Finally saving data")
         df = pd.DataFrame(user_info, index=[0])
         send_data_to_csv(file_name, df)
+        return 1
+    return 0
