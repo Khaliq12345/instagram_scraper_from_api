@@ -3,6 +3,7 @@ import dateparser
 import requests
 from the_retry import retry
 from config import config
+from insta_scrap.exceptions_client import exceptions
 
 
 # Décorateur pour gérer les tentatives multiples avec un délai croissant en cas d'échec
@@ -60,7 +61,7 @@ def get_image_bytes(image_url) -> bytes | None:
 """
 
 
-@retry(attempts=2)
+@retry(attempts=2, expected_exception=exceptions)
 def get_user_infos(username):
     print(f"Getting user - {username} info")
     url = "https://instagram-social-api.p.rapidapi.com/v1/info"

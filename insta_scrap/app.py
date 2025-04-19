@@ -9,9 +9,10 @@ from config import config
 import requests
 from insta_scrap.user_info import get_user_infos
 from the_retry import retry
+from insta_scrap.exceptions_client import exceptions
 
 
-@retry(attempts=5)
+@retry(attempts=5, expected_exception=exceptions)
 def get_com_usernames(post_id, token):
     # Get the usernames of the comments, use token in available
     try:
@@ -45,7 +46,7 @@ def get_com_usernames(post_id, token):
         return None, None
 
 
-@retry(attempts=5)
+@retry(attempts=5, expected_exception=exceptions)
 def get_posts(username, token, min_comments=10):
     # get the post ids and use token in available
     try:
@@ -92,14 +93,14 @@ def analyse_username(username: str, file_name: str) -> int:
         gender_output = start_gender_service(
             user_info["user_infos"], user_info["image_bytes"], file_name=file_name
         )
-        print(f"Gender - {gender_output}")
+    print(f"Gender - {gender_output}")
     print("Ending ------------------------------------ Analysis")
     return gender_output
 
 
 def anaylse_usernames(usernames: list[str], file_name: str):
     results = []
-    with ThreadPoolExecutor(max_workers=5) as worker:
+    with ThreadPoolExecutor(max_workers=1) as worker:
         futures = [
             worker.submit(analyse_username, username, file_name)
             for username in usernames
