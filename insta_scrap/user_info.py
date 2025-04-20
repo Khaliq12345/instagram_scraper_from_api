@@ -4,6 +4,7 @@ import requests
 from the_retry import retry
 from config import config
 from insta_scrap.exceptions_client import exceptions
+from insta_scrap.log_client import logger
 
 
 # Décorateur pour gérer les tentatives multiples avec un délai croissant en cas d'échec
@@ -38,7 +39,7 @@ def is_equal(value1, value2) -> bool:
 
 # Récupère l'image à partir de son URL et renvoie son contenu sous forme de bytes.
 def get_image_bytes(image_url) -> bytes | None:
-    print("Getting Image bytes")
+    logger.info("Getting Image bytes")
     image_bytes = None
     try:
         image_response = requests.get(image_url)
@@ -46,7 +47,7 @@ def get_image_bytes(image_url) -> bytes | None:
         image_bytes = image_response.content
         return image_bytes
     except requests.exceptions.RequestException as e:
-        print(f"Erreur lors du téléchargement de l'image : {e}")
+        logger.info(f"Erreur lors du téléchargement de l'image : {e}")
 
 
 """
@@ -63,12 +64,12 @@ def get_image_bytes(image_url) -> bytes | None:
 
 @retry(attempts=2, expected_exception=exceptions)
 def get_user_infos(username):
-    print(f"Getting user - {username} info")
+    logger.info(f"Getting user - {username} info")
     url = "https://instagram-social-api.p.rapidapi.com/v1/info"
     querystring = {
         "username_or_id_or_url": username,
-        "include_about": "true",
-        "url_embed_safe": "true",
+        "include_about": True,
+        "url_embed_safe": True,
     }
     headers = {
         "X-RapidAPI-Key": config.RAPID_API_KEY,
@@ -77,17 +78,21 @@ def get_user_infos(username):
     data = check_uri(url, querystring, headers)
 
     if data:
-        print(f"Validating user - {username} info")
+        logger.info(f"Validating user - {username} info")
         # Validation des critères de l'utilisateur
         post_count = data.get("post_count", data.get("media_count"))
         if not post_count or not is_at_least(post_count, 3):
             return None
-        following_count = data.get("following_count", 0)
-        if not is_at_least(following_count, 300):
-            return None
-        follower_count = data.get("follower_count", 0)
-        if not is_between(follower_count, 50, 5000):
-            return None
+        # following_count = data.get("following_count", 0)
+        # if not is_at_least(following_count, 300):
+        #     return None
+        # follower_count = data.get("follower_count", 0)
+        # if not is_between(follower_count, 50, 5000):
+        #     return None
+        # if data.get("is_private"):
+        #     return None
+        # if following_count >= follower_count:
+        #     return None
         date_joined = data.get("about", {}).get("date_joined")
         formatted_date_joined = dateparser.parse(date_joined)
         today = datetime.today()
@@ -96,7 +101,7 @@ def get_user_infos(username):
         )
         if months < 6:
             return None
-        # country = data.get("about", {}).get("country")
+        country = data.get("about", {}).get("country")
         # if not is_equal(country, "United States"):
         #     return None
 
@@ -110,12 +115,13 @@ def get_user_infos(username):
                 "follower_count": data.get("follower_count", ""),
                 "following_count": data.get("following_count", ""),
                 "post_count": data.get("media_count"),
+                "country": country,
             },
             "image_bytes": get_image_bytes(
                 data.get("profile_pic_url_hd", data.get("profile_pic_url"))
             ),
         }
-        print(f"User is valid - {username}")
+        logger.info(f"User is valid - {username}")
         return user
     else:
         return None
@@ -123,4 +129,4 @@ def get_user_infos(username):
 
 # # Appel de la fonction avec un exemple d'utilisateur
 # user_infos = get_user_infos("mrbeast")
-# print(user_infos)
+# logger.info(user_infos)

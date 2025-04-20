@@ -8,6 +8,7 @@ import pandas as pd
 import os
 from the_retry import retry
 from insta_scrap.exceptions_client import exceptions
+from insta_scrap.log_client import logger
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -19,12 +20,11 @@ class IsMale(BaseModel):
 
 # Define system prompt
 system_prompt = """
-You are an analytical assistant tasked with determining, 
-if an image depicts a male person based on visual cues and provided textual information (name and bio). 
+You are an analytical assistant tasked with determining if an image depicts a male person based on visual cues and provided textual information (name, bio).
 Use the bio to identify explicit gender indicators (e.g., pronouns like 'he/him', 'she/her', or direct statements like 'I am a man').
 If the bio is ambiguous, make a best-effort judgment based on the image, but prioritize textual evidence.
-Also if bio contains 'promo,' 'crypto,' 'bot,' 'giveaway,' 'follow for' or any spam account words return False.
-Exclude usernames with: lots of numbers, spam phrases, or foreign text also return False is something like that shows up.
+If the bio contains 'promo,' 'crypto,' 'bot,' 'giveaway,' 'follow for,' or any spam account words, return False.
+Exclude usernames with lots of numbers, spam phrases, or foreign text; return False if something like that shows up.
 Return only 'True' if the person is male, or 'False' if not, with no additional text.
 """
 
@@ -37,28 +37,26 @@ def send_data_to_csv(file_name: str, df: pd.DataFrame):
 
 
 # Define user prompt
-def user_prompt(full_name: str, bio: str):
+def user_prompt(full_name: str, bio: str, country: str):
     return f"""
-    Analyze the provided image to determine if it depicts a male person. Use the following name and bio to inform your decision, 
-    prioritizing explicit gender indicators in the bio:
-
-    Name: {full_name}
-    Bio: {bio}
-
-    Return 'True' if the person is male, 'False' if not.
+        Analyze the provided image to determine if it depicts a male person. 
+        Use the following name, and bio to inform your decision, prioritizing explicit gender indicators in the bio:
+        Name: {full_name}
+        Bio: {bio}
+        Return 'True' if the person is male and country is valid, 'False' if not.
     """
 
 
 @retry(attempts=2, backoff=5)
-def generate_gender(img_bytes: bytes, full_name: str, bio: str):
-    print("Using LLM to generate gender")
+def generate_gender(img_bytes: bytes, full_name: str, bio: str, country: str):
+    logger.info("Using LLM to generate gender")
     # Prepare content
     content = [
         types.Part.from_bytes(
             data=img_bytes,
             mime_type="image/jpeg",
         ),
-        user_prompt(full_name, bio),
+        user_prompt(full_name, bio, country),
     ]
 
     # generate the gender
@@ -77,7 +75,7 @@ def generate_gender(img_bytes: bytes, full_name: str, bio: str):
 
 @retry(attempts=5, backoff=5, expected_exception=exceptions)
 def get_username_last_post_date(username: str):
-    print("Getting the date of user last post date")
+    logger.info("Getting the date of user last post date")
     # initialise the parameter and variables needed for the requests
     url = "https://instagram-social-api.p.rapidapi.com/v1/posts"
 
@@ -95,28 +93,36 @@ def get_username_last_post_date(username: str):
     post_data = json_data.get("data", {})
     if post_data:
         posts = post_data.get("items") if post_data else []
-        last_post_date = posts[0]["caption"]["created_at_utc"] if posts else None
-        last_post_date = (
-            parse(str(last_post_date)).isoformat() if last_post_date else None
-        )
-        return last_post_date
+        if posts:
+            try:
+                last_post_date = (
+                    posts[0]["caption"]["created_at_utc"] if posts else None
+                )
+            except Exception:
+                last_post_date = None
+            last_post_date = (
+                parse(str(last_post_date)).isoformat() if last_post_date else None
+            )
+            return last_post_date
 
 
 def start_gender_service(user_info: dict, img_bytes: bytes, file_name: str) -> int:
-    print("Starting Gender service")
+    logger.info("Starting Gender service")
     # get the gender
-    gender = generate_gender(img_bytes, user_info["full_name"], user_info["bio"])
+    gender = generate_gender(
+        img_bytes, user_info["full_name"], user_info["bio"], user_info["country"]
+    )
 
     # validate gender and get last post date
-    print(f"Gender - {gender}")
+    logger.info(f"Gender - {gender}")
     if gender:
         last_post_date = get_username_last_post_date(user_info["username"])
         user_info["last_post_date"] = last_post_date
 
-        print(f"Last post date: {user_info['last_post_date']}")
+        logger.info(f"Last post date: {user_info['last_post_date']}")
 
         # send data to file
-        print("Finally saving data")
+        logger.info("Finally saving data")
         df = pd.DataFrame(user_info, index=[0])
         send_data_to_csv(file_name, df)
         return 1
