@@ -109,6 +109,7 @@ def get_user_infos(username):
 
         user = {
             "user_infos": {
+                "id": data.get("id", ""),
                 "username": data.get("username", ""),
                 "full_name": data.get("full_name", ""),
                 "profile_link": f"https://instagram.com/{data.get('username')}",
