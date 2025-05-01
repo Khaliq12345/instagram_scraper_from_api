@@ -1,7 +1,7 @@
 from google.genai import types
 from google import genai
 from pydantic import BaseModel
-from config.config import GEMINI_API_KEY, RAPID_API_KEY
+from config.config import GEMINI_API_KEY, RAPID_API_KEY, SUPABASE_KEY, SUPABASE_URL
 import requests
 from dateparser import parse
 import pandas as pd
@@ -9,6 +9,7 @@ import os
 from the_retry import retry
 from insta_scrap.exceptions_client import exceptions
 from insta_scrap.log_client import logger
+from supabase import create_client
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -29,11 +30,15 @@ Return only 'True' if the person is male, or 'False' if not, with no additional 
 """
 
 
-def send_data_to_csv(file_name: str, df: pd.DataFrame):
+def send_data_to_csv(file_name: str, df: pd.DataFrame, user_info: dict):
     if os.path.exists(file_name):
         df.to_csv(file_name, mode="a", header=False, index=False)
     else:
         df.to_csv(file_name, index=False)
+
+    # Send to supabase
+    supabase = create_client(supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
+    supabase.table("scraped_users").upsert(user_info).execute()
 
 
 # Define user prompt
@@ -117,13 +122,12 @@ def start_gender_service(user_info: dict, img_bytes: bytes, file_name: str) -> i
     logger.info(f"Gender - {gender}")
     if gender:
         last_post_date = get_username_last_post_date(user_info["username"])
-        user_info["last_post_date"] = last_post_date
 
-        logger.info(f"Last post date: {user_info['last_post_date']}")
+        logger.info(f"Last post date: {last_post_date}")
 
         # send data to file
         logger.info("Finally saving data")
         df = pd.DataFrame(user_info, index=[0])
-        send_data_to_csv(file_name, df)
+        send_data_to_csv(file_name, df, user_info)
         return 1
     return 0

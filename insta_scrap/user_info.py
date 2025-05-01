@@ -80,6 +80,8 @@ def get_user_infos(username):
     if data:
         logger.info(f"Validating user - {username} info")
         # Validation des critères de l'utilisateur
+        if not data.get("id"):
+            return None
         post_count = data.get("post_count", data.get("media_count"))
         if not post_count or not is_at_least(post_count, 3):
             return None
@@ -89,8 +91,8 @@ def get_user_infos(username):
         # follower_count = data.get("follower_count", 0)
         # if not is_between(follower_count, 50, 5000):
         #     return None
-        # if data.get("is_private"):
-        #     return None
+        if data.get("is_private"):
+            return None
         # if following_count >= follower_count:
         #     return None
         date_joined = data.get("about", {}).get("date_joined")
@@ -107,11 +109,11 @@ def get_user_infos(username):
 
         user = {
             "user_infos": {
+                "user_id": data["id"],
                 "username": data.get("username", ""),
                 "full_name": data.get("full_name", ""),
                 "profile_link": f"https://instagram.com/{data.get('username')}",
                 "bio": data.get("biography", ""),
-                "image": data.get("profile_pic_url_hd", data.get("profile_pic_url")),
                 "follower_count": data.get("follower_count", ""),
                 "following_count": data.get("following_count", ""),
                 "post_count": data.get("media_count"),

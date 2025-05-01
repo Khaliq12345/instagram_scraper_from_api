@@ -237,8 +237,8 @@ def process_input_dataframe(
 
 if __name__ == "__main__":
     # analyse_username("weetravelmonkeys", "weetravelmonkeys.csv")
-    df = pd.read_csv("./insta_scrap/output.csv")
+    df = pd.read_csv("/home/khaliq/Downloads/output.csv")
     logger.info(
-        process_input_dataframe(df_source=df, file_name="out.csv", total_results=100)
+        process_input_dataframe(df_source=df, file_name="out.csv", total_results=2)
     )
     # logger.info(get_followers("mrbeast", None))
