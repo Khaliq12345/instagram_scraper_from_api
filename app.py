@@ -105,7 +105,7 @@ def start_app():
         insta_app.login()
 
 
-ui.run(host="0.0.0.0", storage_secret=config.SECRET_KEY)
+ui.run(host="0.0.0.0", storage_secret=config.SECRET_KEY, port=9999)
 
 # if __name__ == "__main__":
 #     from insta_scrap.get_gender import get_username_last_post_date
