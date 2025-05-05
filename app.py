@@ -19,11 +19,16 @@ class InstaApp:
         self.password = None
         self.total_results = 10
         self.file_name = f"{str(int(datetime.now().timestamp()))}.csv"
+        self.token = None
 
     async def start_bot(self):
         self.spinner.visible = True
         file_name = await run.cpu_bound(
-            process_input_dataframe, self.input_df, self.file_name, self.total_results
+            process_input_dataframe,
+            self.input_df,
+            self.file_name,
+            self.total_results,
+            self.token,
         )
         self.spinner.visible = False
 
@@ -81,6 +86,7 @@ class InstaApp:
                 "accept=.csv flat"
             ).classes("w-full")
             ui.number(label="Total to scrape").bind_value(self, "total_results")
+            ui.input(label="Token").bind_value(self, "token")
             ui.button("Start Extracting").classes("full-width m-5").on_click(
                 self.start_bot
             )

@@ -111,7 +111,9 @@ def get_username_last_post_date(username: str):
             return last_post_date
 
 
-def start_gender_service(user_info: dict, img_bytes: bytes, file_name: str) -> int:
+def start_gender_service(
+    user_info: dict, img_bytes: bytes, file_name: str, token: str
+) -> int:
     logger.info("Starting Gender service")
     # get the gender
     gender = generate_gender(
@@ -128,6 +130,7 @@ def start_gender_service(user_info: dict, img_bytes: bytes, file_name: str) -> i
         # send data to file
         logger.info("Finally saving data")
         df = pd.DataFrame(user_info, index=[0])
+        df["token"] = token
         send_data_to_csv(file_name, df, user_info)
         return 1
     return 0

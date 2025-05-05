@@ -112,23 +112,13 @@ def get_followers(username: str, token):
             if not follower.get("is_private"):
                 id_list.append(follower["username"])
 
-        # is_private = user.get("is_private", False) if user else False
-        # if is_private:
-        #     return None
-        # posts = data.get("items", []) if data else []
-        # for p in posts:
-        #     comment_count = p.get("comment_count", 0) if p else 0
-        #     post_id = p.get("id", None) if p else None
-        #     if comment_count > min_comments and post_id:
-        #         id_list.append(post_id)
-
         return id_list, new_token
     except Exception as e:
         logger.info(f"Error while getting posts: {e}")
         return None, None
 
 
-def analyse_username(username: str, file_name: str) -> int:
+def analyse_username(username: str, file_name: str, token: str) -> int:
     # start the user analysis (step 2)
     gender_output = 0
     try:
@@ -136,7 +126,10 @@ def analyse_username(username: str, file_name: str) -> int:
         user_info = get_user_infos(username)
         if user_info:
             gender_output = start_gender_service(
-                user_info["user_infos"], user_info["image_bytes"], file_name=file_name
+                user_info["user_infos"],
+                user_info["image_bytes"],
+                file_name=file_name,
+                token=token,
             )
         logger.info(f"Gender - {gender_output}")
         logger.info("Ending ------------------------------------ Analysis")
@@ -145,17 +138,20 @@ def analyse_username(username: str, file_name: str) -> int:
         return 0
 
 
-def anaylse_usernames(usernames: list[str], file_name: str):
+def anaylse_usernames(
+    usernames: list[str], file_name: str, token_next_for_follower: str | None
+):
     results = []
     file_names = [file_name for username in usernames]
+    tokens = [token_next_for_follower for username in usernames]
     with ThreadPoolExecutor(max_workers=10) as worker:
-        results = worker.map(analyse_username, usernames, file_names)
+        results = worker.map(analyse_username, usernames, file_names, tokens)
 
     return sum(results)
 
 
 def process_input_dataframe(
-    df_source: pd.DataFrame, file_name: str, total_results: int
+    df_source: pd.DataFrame, file_name: str, total_results: int, token: str
 ):
     # Initialise the variable to use
     already_got = 0
@@ -173,14 +169,16 @@ def process_input_dataframe(
         )
         try:
             next_for_follower = True
-            token_next_for_follower = None
+            token_next_for_follower = token
             while next_for_follower:
                 follower_list, token_next_for_follower = get_followers(
                     username, token_next_for_follower
                 )
                 if not follower_list:
                     break
-                added = anaylse_usernames(follower_list, file_name)
+                added = anaylse_usernames(
+                    follower_list, file_name, token_next_for_follower
+                )
                 logger.info(f"Total added: {added}")
                 already_got += added
                 logger.info(
@@ -190,44 +188,6 @@ def process_input_dataframe(
                     next_for_follower = False
                     break
 
-            # _-----------------------------------
-            # # going through all the posts to extract the ids
-            # next_for_post = True
-            # token_next_for_post = None
-            # while next_for_post:
-            #     posts_list, token_next_for_post = get_posts(
-            #         username, token_next_for_post
-            #     )
-            #     logger.info(
-            #         f"    - step 1-1   --> Total Posts: {len(posts_list) if posts_list else 0}"
-            #     )
-            #     for post_id in posts_list:
-            #         if already_got >= total_results:
-            #             next_for_post = False
-            #             break
-
-            #         #  going through all the comments to extract the username of the commentor
-            #         next_for_com = True
-            #         token_next_for_com = None
-            #         while next_for_com:
-            #             com_usernames, token_next_for_com = get_com_usernames(
-            #                 post_id, token_next_for_com
-            #             )
-            #             logger.info(
-            #                 f"- step 1-2   --> Got {len(com_usernames) if com_usernames else 0} usernames"
-            #             )
-
-            #             # analyse and filter the username to get the gender, metric, e.t.c And save it if valid
-            #             added = anaylse_usernames(com_usernames, file_name)
-            #             logger.info(f"Total added: {added}")
-            #             already_got += added
-            #             logger.info(
-            #                 f"** Ok - Username added | Total: {already_got}/{total_results}"
-            #             )
-            #             if already_got >= total_results:
-            #                 next_for_com = False
-            #                 next_for_post = False
-            #                 break
         except Exception as e:
             logger.info(f"Error processing username {username}: {e}")
 
