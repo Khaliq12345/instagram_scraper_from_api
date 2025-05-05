@@ -1,0 +1,7 @@
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: DockerFile
+    ports:
+      - "9999:9999"

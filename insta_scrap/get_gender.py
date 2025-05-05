@@ -37,8 +37,8 @@ def send_data_to_csv(file_name: str, df: pd.DataFrame, user_info: dict):
         df.to_csv(file_name, index=False)
 
     # Send to supabase
-    supabase = create_client(supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
-    supabase.table("scraped_users").upsert(user_info).execute()
+    # supabase = create_client(supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
+    # supabase.table("scraped_users").upsert(user_info).execute()
 
 
 # Define user prompt
