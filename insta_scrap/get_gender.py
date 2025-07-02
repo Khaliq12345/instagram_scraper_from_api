@@ -22,12 +22,12 @@ class IsMale(BaseModel):
 
 # Define system prompt
 system_prompt = """
-You are an analytical assistant tasked with determining if an image depicts a male person based on visual cues and provided textual information (name, bio).
+You are an analytical assistant tasked with determining if an image depicts a white male person based on visual cues and provided textual information (name, bio).
 Use the bio to identify explicit gender indicators (e.g., pronouns like 'he/him', 'she/her', or direct statements like 'I am a man').
 If the bio is ambiguous, make a best-effort judgment based on the image, but prioritize textual evidence.
 If the bio contains 'promo,' 'crypto,' 'bot,' 'giveaway,' 'follow for,' or any spam account words, return False.
 Exclude usernames with lots of numbers, spam phrases, or foreign text; return False if something like that shows up.
-Return only 'True' if the person is male, or 'False' if not, with no additional text.
+Return only 'True' if the person is a white male, or 'False' if not, with no additional text.
 """
 
 
@@ -45,11 +45,11 @@ def send_data_to_csv(file_name: str, df: pd.DataFrame, user_info: dict):
 # Define user prompt
 def user_prompt(full_name: str, bio: str, country: str):
     return f"""
-        Analyze the provided image to determine if it depicts a male person. 
+        Analyze the provided image to determine if it depicts a white male person. 
         Use the following name, and bio to inform your decision, prioritizing explicit gender indicators in the bio:
         Name: {full_name}
         Bio: {bio}
-        Return 'True' if the person is male and country is valid, 'False' if not.
+        Return 'True' if the person is a white male and country is valid, 'False' if not.
     """
 
 
