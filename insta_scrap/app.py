@@ -151,10 +151,15 @@ def anaylse_usernames(
 
 
 def process_input_dataframe(
-    df_source: pd.DataFrame, file_name: str, total_results: int, token: str
+    df_source: pd.DataFrame | None,
+    file_name: str,
+    total_results: int,
+    token: str,
 ):
     # Initialise the variable to use
     already_got = 0
+    if df_source is None:
+        return None
     # file_name = f"{str(int(datetime.now().timestamp()))}.csv"
     if df_source.empty:
         return None
@@ -199,6 +204,8 @@ if __name__ == "__main__":
     # analyse_username("weetravelmonkeys", "weetravelmonkeys.csv")
     df = pd.read_csv("/home/khaliq/Downloads/output.csv")
     logger.info(
-        process_input_dataframe(df_source=df, file_name="out.csv", total_results=2)
+        process_input_dataframe(
+            df_source=df, file_name="out.csv", total_results=2
+        )
     )
     # logger.info(get_followers("mrbeast", None))
