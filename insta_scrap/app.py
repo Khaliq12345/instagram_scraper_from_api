@@ -18,13 +18,13 @@ def get_com_usernames(post_id, token):
     # Get the usernames of the comments, use token in available
     try:
         usernames_list = []
-        url = "https://instagram-social-api.p.rapidapi.com/v1/comments"
+        url = f"https://{config.RAPID_API_HOST}/v1/comments"
         querystring = {"code_or_id_or_url": post_id, "sort_by": "popular"}
         if token:
             querystring["pagination_token"] = token
         headers = {
             "x-rapidapi-key": config.RAPID_API_KEY,
-            "x-rapidapi-host": "instagram-social-api.p.rapidapi.com",
+            "x-rapidapi-host": f"{config.RAPID_API_HOST}",
         }
 
         # Analyse and parse the comments to get the usernames
@@ -53,13 +53,13 @@ def get_posts(username, token, min_comments=10):
     try:
         # Initialise the parameters needed to send the requests
         id_list = []
-        url = "https://instagram-social-api.p.rapidapi.com/v1/posts"
+        url = f"https://{config.RAPID_API_HOST}/v1/posts"
         querystring = {"username_or_id_or_url": username}
         if token:
             querystring["pagination_token"] = token
         headers = {
             "x-rapidapi-key": config.RAPID_API_KEY,
-            "x-rapidapi-host": "instagram-social-api.p.rapidapi.com",
+            "x-rapidapi-host": f"{config.RAPID_API_HOST}",
         }
 
         # Analyse and parse the response
@@ -91,14 +91,14 @@ def get_followers(username: str, token):
     try:
         # Initialise the parameters needed to send the requests
         id_list = []
-        url = "https://instagram-social-api.p.rapidapi.com/v1/followers"
+        url = f"https://{config.RAPID_API_HOST}/v1/followers"
         querystring = {"username_or_id_or_url": username}
 
         if token:
             querystring["pagination_token"] = token
         headers = {
             "x-rapidapi-key": config.RAPID_API_KEY,
-            "x-rapidapi-host": "instagram-social-api.p.rapidapi.com",
+            "x-rapidapi-host": f"{config.RAPID_API_HOST}",
         }
 
         # Analyse and parse the response

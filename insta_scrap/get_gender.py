@@ -1,7 +1,8 @@
+import config
 from google.genai import types
 from google import genai
 from pydantic import BaseModel
-from config.config import GEMINI_API_KEY, RAPID_API_KEY, SUPABASE_KEY, SUPABASE_URL
+from config.config import GEMINI_API_KEY, RAPID_API_KEY, RAPID_API_HOST
 import requests
 from dateparser import parse
 import pandas as pd
@@ -82,13 +83,13 @@ def generate_gender(img_bytes: bytes, full_name: str, bio: str, country: str):
 def get_username_last_post_date(username: str):
     logger.info("Getting the date of user last post date")
     # initialise the parameter and variables needed for the requests
-    url = "https://instagram-social-api.p.rapidapi.com/v1/posts"
+    url = f"https://{RAPID_API_HOST}/v1/posts"
 
     querystring = {"username_or_id_or_url": username}
 
     headers = {
         "x-rapidapi-key": RAPID_API_KEY,
-        "x-rapidapi-host": "instagram-social-api.p.rapidapi.com",
+        "x-rapidapi-host": f"{RAPID_API_HOST}",
     }
 
     # send the requests and parse the response
@@ -106,7 +107,9 @@ def get_username_last_post_date(username: str):
             except Exception:
                 last_post_date = None
             last_post_date = (
-                parse(str(last_post_date)).isoformat() if last_post_date else None
+                parse(str(last_post_date)).isoformat()
+                if last_post_date
+                else None
             )
             return last_post_date
 
@@ -117,7 +120,10 @@ def start_gender_service(
     logger.info("Starting Gender service")
     # get the gender
     gender = generate_gender(
-        img_bytes, user_info["full_name"], user_info["bio"], user_info["country"]
+        img_bytes,
+        user_info["full_name"],
+        user_info["bio"],
+        user_info["country"],
     )
 
     # validate gender and get last post date

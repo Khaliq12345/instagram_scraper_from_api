@@ -65,7 +65,7 @@ def get_image_bytes(image_url) -> bytes | None:
 @retry(attempts=2, expected_exception=exceptions)
 def get_user_infos(username):
     logger.info(f"Getting user - {username} info")
-    url = "https://instagram-social-api.p.rapidapi.com/v1/info"
+    url = f"https://{config.RAPID_API_HOST}/v1/info"
     querystring = {
         "username_or_id_or_url": username,
         "include_about": True,
@@ -73,7 +73,7 @@ def get_user_infos(username):
     }
     headers = {
         "X-RapidAPI-Key": config.RAPID_API_KEY,
-        "X-RapidAPI-Host": "instagram-social-api.p.rapidapi.com",
+        "X-RapidAPI-Host": f"{config.RAPID_API_HOST}",
     }
     data = check_uri(url, querystring, headers)
 
